@@ -19,9 +19,11 @@ interface DevelopersFormProps {
   developers: Developer[]
   onChange: (developers: Developer[]) => void
   hourlyWorkingHours: number
+  currency: "USD" | "BDT"
 }
 
-export function DevelopersForm({ developers, onChange, hourlyWorkingHours }: DevelopersFormProps) {
+export function DevelopersForm({ developers, onChange, hourlyWorkingHours, currency }: DevelopersFormProps) {
+  const currencySymbol = currency === "USD" ? "$" : "৳"
   const addDeveloper = () => {
     const newDeveloper: Developer = {
       id: crypto.randomUUID(),
@@ -126,7 +128,7 @@ export function DevelopersForm({ developers, onChange, hourlyWorkingHours }: Dev
                       
                       <div className="space-y-2">
                         <Label htmlFor={`dev-salary-${dev.id}`} className="text-xs text-muted-foreground">
-                          Monthly Salary ($)
+                          Monthly Salary ({currencySymbol})
                         </Label>
                         <div className="relative">
                           <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -187,7 +189,7 @@ export function DevelopersForm({ developers, onChange, hourlyWorkingHours }: Dev
                     <div className="flex items-center gap-2">
                       <span className="text-muted-foreground">Hourly Rate:</span>
                       <span className="font-mono font-medium text-foreground">
-                        ${hourlyRate.toFixed(2)}
+                        {currencySymbol}{hourlyRate.toFixed(2)}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -199,7 +201,7 @@ export function DevelopersForm({ developers, onChange, hourlyWorkingHours }: Dev
                     <div className="flex items-center gap-2">
                       <span className="text-muted-foreground">Cost:</span>
                       <span className="font-mono font-medium text-accent">
-                        ${devCost.toFixed(2)}
+                        {currencySymbol}{devCost.toFixed(2)}
                       </span>
                     </div>
                   </div>

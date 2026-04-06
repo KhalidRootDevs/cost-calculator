@@ -52,7 +52,7 @@ export function ProjectInfoForm({ projectInfo, onChange }: ProjectInfoFormProps)
         flatpickrInstance.current = null
       }
     }
-  }, [])
+  }, [projectInfo, onChange])
 
   // Update flatpickr when date changes externally
   useEffect(() => {
