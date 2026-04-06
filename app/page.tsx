@@ -1,20 +1,23 @@
-"use client"
+"use client";
 
-import { useState, useMemo } from "react"
-import { ProjectInfoForm, type ProjectInfo } from "@/components/project-info-form"
-import { WorkScheduleForm } from "@/components/work-schedule-form"
-import { BreaksForm, type Break } from "@/components/breaks-form"
-import { DevelopersForm, type Developer } from "@/components/developers-form"
-import { CostSummary } from "@/components/cost-summary"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
-import { Clock, Users, Calculator } from "lucide-react"
+import { useState, useMemo } from "react";
+import {
+  ProjectInfoForm,
+  type ProjectInfo,
+} from "@/components/project-info-form";
+import { WorkScheduleForm } from "@/components/work-schedule-form";
+import { BreaksForm, type Break } from "@/components/breaks-form";
+import { DevelopersForm, type Developer } from "@/components/developers-form";
+import { CostSummary } from "@/components/cost-summary";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Clock, Users, Calculator } from "lucide-react";
 
 interface WorkSchedule {
-  daysPerWeek: number
-  startTime: string
-  endTime: string
-  workingDays: string[]
+  daysPerWeek: number;
+  startTime: string;
+  endTime: string;
+  workingDays: string[];
 }
 
 export default function CostCalculator() {
@@ -22,58 +25,59 @@ export default function CostCalculator() {
     projectName: "",
     clientName: "",
     invoiceDate: new Date().toISOString().split("T")[0],
-    primaryCurrency: "USD"
-  })
+    primaryCurrency: "USD",
+  });
 
   const [workSchedule, setWorkSchedule] = useState<WorkSchedule>({
     daysPerWeek: 5,
-    startTime: "09:00",
-    endTime: "18:00",
-    workingDays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-  })
+    startTime: "10:00",
+    endTime: "19:00",
+    workingDays: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"],
+  });
 
   const [breaks, setBreaks] = useState<Break[]>([
-    { id: "1", name: "Lunch Break", duration: 60 }
-  ])
+    { id: "1", name: "Lunch Break", duration: 60 },
+  ]);
 
-  const [developers, setDevelopers] = useState<Developer[]>([])
+  const [developers, setDevelopers] = useState<Developer[]>([]);
 
-  const [officeCostPercent, setOfficeCostPercent] = useState(15)
-  const [profitMarginPercent, setProfitMarginPercent] = useState(20)
+  const [officeCostPercent, setOfficeCostPercent] = useState(15);
+  const [profitMarginPercent, setProfitMarginPercent] = useState(20);
 
   // Calculate effective working hours per day
   const effectiveWorkingHours = useMemo(() => {
-    const [startHour, startMin] = workSchedule.startTime.split(":").map(Number)
-    const [endHour, endMin] = workSchedule.endTime.split(":").map(Number)
-    
-    const totalMinutes = (endHour * 60 + endMin) - (startHour * 60 + startMin)
-    const breakMinutes = breaks.reduce((sum, b) => sum + b.duration, 0)
-    
-    return Math.max(0, (totalMinutes - breakMinutes) / 60)
-  }, [workSchedule.startTime, workSchedule.endTime, breaks])
+    const [startHour, startMin] = workSchedule.startTime.split(":").map(Number);
+    const [endHour, endMin] = workSchedule.endTime.split(":").map(Number);
+
+    const totalMinutes = endHour * 60 + endMin - (startHour * 60 + startMin);
+    const breakMinutes = breaks.reduce((sum, b) => sum + b.duration, 0);
+
+    return Math.max(0, (totalMinutes - breakMinutes) / 60);
+  }, [workSchedule.startTime, workSchedule.endTime, breaks]);
 
   // Calculate base development cost
   const { baseCost, totalHours } = useMemo(() => {
-    let totalCost = 0
-    let hours = 0
+    let totalCost = 0;
+    let hours = 0;
 
-    const weeklyHours = effectiveWorkingHours * 5
-    const monthlyHours = weeklyHours * 4.33
+    const weeklyHours = effectiveWorkingHours * 5;
+    const monthlyHours = weeklyHours * 4.33;
 
     developers.forEach((dev) => {
-      const hourlyRate = dev.monthlySalary / monthlyHours
-      const hoursWorked = dev.workType === "days" 
-        ? dev.workAmount * effectiveWorkingHours 
-        : dev.workAmount
-      
-      hours += hoursWorked
-      totalCost += hoursWorked * hourlyRate
-    })
+      const hourlyRate = dev.monthlySalary / monthlyHours;
+      const hoursWorked =
+        dev.workType === "days"
+          ? dev.workAmount * effectiveWorkingHours
+          : dev.workAmount;
 
-    return { baseCost: totalCost, totalHours: hours }
-  }, [developers, effectiveWorkingHours])
+      hours += hoursWorked;
+      totalCost += hoursWorked * hourlyRate;
+    });
 
-  const currencySymbol = projectInfo.primaryCurrency === "USD" ? "$" : "৳"
+    return { baseCost: totalCost, totalHours: hours };
+  }, [developers, effectiveWorkingHours]);
+
+  const currencySymbol = projectInfo.primaryCurrency === "USD" ? "$" : "৳";
 
   return (
     <div className="min-h-screen bg-background">
@@ -85,15 +89,22 @@ export default function CostCalculator() {
               <Calculator className="h-5 w-5 text-accent-foreground" />
             </div>
             <div>
-              <h1 className="text-lg font-semibold text-foreground">Cost Calculator</h1>
-              <p className="text-xs text-muted-foreground">Software Development Farm</p>
+              <h1 className="text-lg font-semibold text-foreground">
+                Cost Calculator
+              </h1>
+              <p className="text-xs text-muted-foreground">
+                Software Development Farm
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <Badge variant="outline" className="border-accent/50 text-accent">
               {currencySymbol} {projectInfo.primaryCurrency}
             </Badge>
-            <Badge variant="outline" className="border-border text-muted-foreground">
+            <Badge
+              variant="outline"
+              className="border-border text-muted-foreground"
+            >
               v1.0
             </Badge>
           </div>
@@ -109,7 +120,9 @@ export default function CostCalculator() {
                 <Clock className="h-6 w-6 text-foreground" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Working Hours/Day</p>
+                <p className="text-sm text-muted-foreground">
+                  Working Hours/Day
+                </p>
                 <p className="text-2xl font-bold text-foreground">
                   {effectiveWorkingHours.toFixed(1)}h
                 </p>
@@ -124,7 +137,9 @@ export default function CostCalculator() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Team Members</p>
-                <p className="text-2xl font-bold text-foreground">{developers.length}</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {developers.length}
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -136,7 +151,9 @@ export default function CostCalculator() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Project Hours</p>
-                <p className="text-2xl font-bold text-foreground">{totalHours.toFixed(1)}h</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {totalHours.toFixed(1)}h
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -154,12 +171,9 @@ export default function CostCalculator() {
               schedule={workSchedule}
               onChange={setWorkSchedule}
             />
-            
-            <BreaksForm
-              breaks={breaks}
-              onChange={setBreaks}
-            />
-            
+
+            <BreaksForm breaks={breaks} onChange={setBreaks} />
+
             <DevelopersForm
               developers={developers}
               onChange={setDevelopers}
@@ -189,10 +203,11 @@ export default function CostCalculator() {
       <footer className="border-t border-border bg-card mt-12">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <p className="text-center text-sm text-muted-foreground">
-            Software Farm Cost Calculator &middot; Calculate accurate project costs for your development team
+            Software Farm Cost Calculator &middot; Calculate accurate project
+            costs for your development team
           </p>
         </div>
       </footer>
     </div>
-  )
+  );
 }
