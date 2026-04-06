@@ -178,6 +178,7 @@ export default function CostCalculator() {
               developers={developers}
               onChange={setDevelopers}
               hourlyWorkingHours={effectiveWorkingHours}
+              currency={projectInfo.primaryCurrency}
             />
           </div>
 
