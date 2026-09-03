@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Slider } from "@/components/ui/slider"
 import { Separator } from "@/components/ui/separator"
-import { Calculator, Building, TrendingUp, DollarSign, Percent, FileText, Building2, Calendar } from "lucide-react"
+import { Calculator, Building, TrendingUp, Percent, FileText, Building2, Calendar } from "lucide-react"
+import { formatMoney, getCurrency } from "@/lib/currency"
 
 // Dynamically import DownloadButton with SSR disabled to avoid jsPDF/docx SSR issues
 const DownloadButton = dynamic(() => import("./download-button").then(mod => ({ default: mod.DownloadButton })), {
@@ -13,14 +14,11 @@ const DownloadButton = dynamic(() => import("./download-button").then(mod => ({ 
   loading: () => <div className="h-9 w-24 bg-secondary rounded-md animate-pulse" />
 })
 
-// Exchange rate: 1 USD = 121 BDT (approximate rate)
-const USD_TO_BDT = 121
-
 interface Developer {
   id: string
   name: string
   monthlySalary: number
-  workType: "hours" | "days"
+  workType: "hours" | "days" | "months"
   workAmount: number
 }
 
@@ -28,7 +26,9 @@ interface ProjectInfo {
   projectName: string
   clientName: string
   invoiceDate: string
-  primaryCurrency: "USD" | "BDT"
+  primaryCurrency: string
+  secondaryCurrency: string
+  exchangeRate: number
 }
 
 interface CostSummaryProps {
@@ -61,22 +61,17 @@ export function CostSummary({
   const profitAmount = subtotalWithOffice * (profitMarginPercent / 100)
   const totalCost = subtotalWithOffice + profitAmount
 
-  const isPrimaryUSD = projectInfo.primaryCurrency === "USD"
-  
-  // Convert to both currencies
-  const totalUSD = isPrimaryUSD ? totalCost : totalCost / USD_TO_BDT
-  const totalBDT = isPrimaryUSD ? totalCost * USD_TO_BDT : totalCost
+  const { exchangeRate } = projectInfo
+  const primaryMeta = getCurrency(projectInfo.primaryCurrency)
+  const secondaryMeta = getCurrency(projectInfo.secondaryCurrency)
+  const PrimaryIcon = primaryMeta.icon
+  const SecondaryIcon = secondaryMeta.icon
 
-  const formatCurrency = (amount: number, currency: "USD" | "BDT") => {
-    if (currency === "USD") {
-      return `$${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-    }
-    return `৳${amount.toLocaleString("en-BD", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-  }
+  // Convert total to the secondary currency for dual display.
+  const totalPrimary = totalCost
+  const totalSecondary = totalCost * exchangeRate
 
-  const formatPrimaryCurrency = (amount: number) => {
-    return formatCurrency(amount, projectInfo.primaryCurrency)
-  }
+  const formatPrimaryCurrency = (amount: number) => formatMoney(amount, projectInfo.primaryCurrency)
 
   const formatDate = (dateString: string) => {
     if (!dateString) return "Not set"
@@ -113,8 +108,7 @@ export function CostSummary({
             officeCost={officeCost}
             profitAmount={profitAmount}
             totalCost={totalCost}
-            totalUSD={totalUSD}
-            totalBDT={totalBDT}
+            totalSecondary={totalSecondary}
           />
         </div>
       </CardHeader>
@@ -159,7 +153,7 @@ export function CostSummary({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <PrimaryIcon className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Base Development Cost</span>
             </div>
             <span className="font-mono text-lg font-semibold text-foreground">
@@ -187,8 +181,10 @@ export function CostSummary({
                   type="number"
                   min="0"
                   max="100"
-                  value={officeCostPercent}
-                  onChange={(e) => onOfficeCostChange(Number(e.target.value))}
+                  placeholder="0"
+                  value={officeCostPercent === 0 ? "" : officeCostPercent}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => onOfficeCostChange(e.target.value === "" ? 0 : Number(e.target.value))}
                   className="pr-6 bg-input border-border text-foreground text-right h-8 text-sm"
                 />
                 <Percent className="absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
@@ -225,8 +221,10 @@ export function CostSummary({
                   type="number"
                   min="0"
                   max="100"
-                  value={profitMarginPercent}
-                  onChange={(e) => onProfitMarginChange(Number(e.target.value))}
+                  placeholder="0"
+                  value={profitMarginPercent === 0 ? "" : profitMarginPercent}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => onProfitMarginChange(e.target.value === "" ? 0 : Number(e.target.value))}
                   className="pr-6 bg-input border-border text-foreground text-right h-8 text-sm"
                 />
                 <Percent className="absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
@@ -269,21 +267,25 @@ export function CostSummary({
         <div className="rounded-lg border border-accent/30 bg-accent/5 p-4">
           <p className="text-xs text-muted-foreground mb-3">Amount in both currencies</p>
           <div className="grid grid-cols-2 gap-4">
-            <div className={`rounded-lg p-3 ${isPrimaryUSD ? 'bg-accent/20 border border-accent/30' : 'bg-secondary/50'}`}>
-              <p className="text-xs text-muted-foreground mb-1">US Dollar</p>
-              <p className={`font-mono text-lg font-bold ${isPrimaryUSD ? 'text-accent' : 'text-foreground'}`}>
-                {formatCurrency(totalUSD, "USD")}
+            <div className="rounded-lg p-3 bg-accent/20 border border-accent/30">
+              <p className="mb-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                <PrimaryIcon className="h-3.5 w-3.5" /> {primaryMeta.name}
+              </p>
+              <p className="font-mono text-lg font-bold text-accent">
+                {formatMoney(totalPrimary, primaryMeta.code)}
               </p>
             </div>
-            <div className={`rounded-lg p-3 ${!isPrimaryUSD ? 'bg-accent/20 border border-accent/30' : 'bg-secondary/50'}`}>
-              <p className="text-xs text-muted-foreground mb-1">Bangladeshi Taka</p>
-              <p className={`font-mono text-lg font-bold ${!isPrimaryUSD ? 'text-accent' : 'text-foreground'}`}>
-                {formatCurrency(totalBDT, "BDT")}
+            <div className="rounded-lg p-3 bg-secondary/50">
+              <p className="mb-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                <SecondaryIcon className="h-3.5 w-3.5" /> {secondaryMeta.name}
+              </p>
+              <p className="font-mono text-lg font-bold text-foreground">
+                {formatMoney(totalSecondary, secondaryMeta.code)}
               </p>
             </div>
           </div>
           <p className="text-xs text-muted-foreground mt-3 text-center">
-            Exchange rate: $1 = ৳{USD_TO_BDT}
+            Exchange rate: 1 {primaryMeta.symbol} = {exchangeRate} {secondaryMeta.symbol}
           </p>
         </div>
       </CardContent>

@@ -5,13 +5,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Users, Plus, Trash2, DollarSign } from "lucide-react"
+import { Users, Plus, Trash2 } from "lucide-react"
+import { currencySymbol as symbolFor, currencyIcon } from "@/lib/currency"
 
 export interface Developer {
   id: string
   name: string
   monthlySalary: number
-  workType: "hours" | "days"
+  workType: "hours" | "days" | "months"
   workAmount: number
 }
 
@@ -19,11 +20,12 @@ interface DevelopersFormProps {
   developers: Developer[]
   onChange: (developers: Developer[]) => void
   hourlyWorkingHours: number
-  currency: "USD" | "BDT"
+  currency: string
 }
 
 export function DevelopersForm({ developers, onChange, hourlyWorkingHours, currency }: DevelopersFormProps) {
-  const currencySymbol = currency === "USD" ? "$" : "৳"
+  const currencySymbol = symbolFor(currency)
+  const CurrencyIcon = currencyIcon(currency)
   const addDeveloper = () => {
     const newDeveloper: Developer = {
       id: crypto.randomUUID(),
@@ -55,11 +57,17 @@ export function DevelopersForm({ developers, onChange, hourlyWorkingHours, curre
     onChange(developers.filter((d) => d.id !== id))
   }
 
+  // Assuming 5 working days/week, 4.33 weeks/month average
+  const monthlyHours = hourlyWorkingHours * 5 * 4.33
+
   const calculateHourlyRate = (monthlySalary: number) => {
-    // Assuming 4.33 weeks per month average
-    const weeklyHours = hourlyWorkingHours * 5 // assuming 5 working days for rate calculation
-    const monthlyHours = weeklyHours * 4.33
-    return monthlySalary / monthlyHours
+    return monthlyHours > 0 ? monthlySalary / monthlyHours : 0
+  }
+
+  const hoursFor = (dev: Developer) => {
+    if (dev.workType === "days") return dev.workAmount * hourlyWorkingHours
+    if (dev.workType === "months") return dev.workAmount * monthlyHours
+    return dev.workAmount
   }
 
   return (
@@ -101,9 +109,7 @@ export function DevelopersForm({ developers, onChange, hourlyWorkingHours, curre
           <div className="space-y-4">
             {developers.map((dev) => {
               const hourlyRate = calculateHourlyRate(dev.monthlySalary)
-              const hoursWorked = dev.workType === "days" 
-                ? dev.workAmount * hourlyWorkingHours 
-                : dev.workAmount
+              const hoursWorked = hoursFor(dev)
               const devCost = hoursWorked * hourlyRate
               
               return (
@@ -131,12 +137,14 @@ export function DevelopersForm({ developers, onChange, hourlyWorkingHours, curre
                           Monthly Salary ({currencySymbol})
                         </Label>
                         <div className="relative">
-                          <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                          <CurrencyIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                           <Input
                             id={`dev-salary-${dev.id}`}
                             type="number"
                             min="0"
-                            value={dev.monthlySalary}
+                            placeholder="0"
+                            value={dev.monthlySalary === 0 ? "" : dev.monthlySalary}
+                            onFocus={(e) => e.target.select()}
                             onChange={(e) => updateDeveloper(dev.id, "monthlySalary", e.target.value)}
                             className="pl-10 bg-input border-border text-foreground"
                           />
@@ -155,20 +163,23 @@ export function DevelopersForm({ developers, onChange, hourlyWorkingHours, curre
                           <SelectContent className="bg-popover border-border">
                             <SelectItem value="hours" className="text-foreground">Hours</SelectItem>
                             <SelectItem value="days" className="text-foreground">Days</SelectItem>
+                            <SelectItem value="months" className="text-foreground">Months</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                       
                       <div className="space-y-2">
                         <Label htmlFor={`dev-amount-${dev.id}`} className="text-xs text-muted-foreground">
-                          {dev.workType === "hours" ? "Hours Worked" : "Days Worked"}
+                          {dev.workType === "hours" ? "Hours Worked" : dev.workType === "days" ? "Days Worked" : "Months Worked"}
                         </Label>
                         <Input
                           id={`dev-amount-${dev.id}`}
                           type="number"
                           min="0"
-                          step={dev.workType === "hours" ? "0.5" : "1"}
-                          value={dev.workAmount}
+                          step={dev.workType === "hours" ? "0.5" : dev.workType === "months" ? "0.5" : "1"}
+                          placeholder="0"
+                          value={dev.workAmount === 0 ? "" : dev.workAmount}
+                          onFocus={(e) => e.target.select()}
                           onChange={(e) => updateDeveloper(dev.id, "workAmount", e.target.value)}
                           className="bg-input border-border text-foreground"
                         />

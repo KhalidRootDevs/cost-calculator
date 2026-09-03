@@ -103,7 +103,9 @@ export function BreaksForm({ breaks, onChange }: BreaksFormProps) {
                     id={`break-duration-${breakItem.id}`}
                     type="number"
                     min="0"
-                    value={breakItem.duration}
+                    placeholder="0"
+                    value={breakItem.duration === 0 ? "" : breakItem.duration}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) => updateBreak(breakItem.id, "duration", e.target.value)}
                     className="bg-input border-border text-foreground"
                   />

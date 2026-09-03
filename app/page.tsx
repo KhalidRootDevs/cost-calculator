@@ -9,9 +9,12 @@ import { WorkScheduleForm } from "@/components/work-schedule-form";
 import { BreaksForm, type Break } from "@/components/breaks-form";
 import { DevelopersForm, type Developer } from "@/components/developers-form";
 import { CostSummary } from "@/components/cost-summary";
+import { BudgetProjection } from "@/components/budget-projection";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Clock, Users, Calculator } from "lucide-react";
+import { useExchangeRate } from "@/hooks/use-exchange-rate";
+import { getCurrency, convertWithRates } from "@/lib/currency";
 
 interface WorkSchedule {
   daysPerWeek: number;
@@ -21,12 +24,29 @@ interface WorkSchedule {
 }
 
 export default function CostCalculator() {
+  const { rates, updatedAt, loading, error, refresh } = useExchangeRate();
+
   const [projectInfo, setProjectInfo] = useState<ProjectInfo>({
     projectName: "",
     clientName: "",
     invoiceDate: new Date().toISOString().split("T")[0],
     primaryCurrency: "USD",
+    secondaryCurrency: "BDT",
+    exchangeRate: 121,
   });
+
+  // Auto-refresh the pair rate when the currency selection changes;
+  // manual edits to the rate field alone are preserved.
+  const handleProjectChange = (next: ProjectInfo) => {
+    const pairChanged =
+      next.primaryCurrency !== projectInfo.primaryCurrency ||
+      next.secondaryCurrency !== projectInfo.secondaryCurrency;
+    if (pairChanged) {
+      const live = convertWithRates(1, next.primaryCurrency, next.secondaryCurrency, rates);
+      next = { ...next, exchangeRate: Number(live.toFixed(4)) };
+    }
+    setProjectInfo(next);
+  };
 
   const [workSchedule, setWorkSchedule] = useState<WorkSchedule>({
     daysPerWeek: 5,
@@ -68,6 +88,8 @@ export default function CostCalculator() {
       const hoursWorked =
         dev.workType === "days"
           ? dev.workAmount * effectiveWorkingHours
+          : dev.workType === "months"
+          ? dev.workAmount * monthlyHours
           : dev.workAmount;
 
       hours += hoursWorked;
@@ -77,7 +99,8 @@ export default function CostCalculator() {
     return { baseCost: totalCost, totalHours: hours };
   }, [developers, effectiveWorkingHours]);
 
-  const currencySymbol = projectInfo.primaryCurrency === "USD" ? "$" : "৳";
+  const primaryMeta = getCurrency(projectInfo.primaryCurrency);
+  const HeaderCurrencyIcon = primaryMeta.icon;
 
   return (
     <div className="min-h-screen bg-background">
@@ -98,8 +121,9 @@ export default function CostCalculator() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Badge variant="outline" className="border-accent/50 text-accent">
-              {currencySymbol} {projectInfo.primaryCurrency}
+            <Badge variant="outline" className="gap-1 border-accent/50 text-accent">
+              <HeaderCurrencyIcon className="h-3.5 w-3.5" />
+              {projectInfo.primaryCurrency}
             </Badge>
             <Badge
               variant="outline"
@@ -164,7 +188,12 @@ export default function CostCalculator() {
           <div className="lg:col-span-2 space-y-6">
             <ProjectInfoForm
               projectInfo={projectInfo}
-              onChange={setProjectInfo}
+              onChange={handleProjectChange}
+              rates={rates}
+              ratesLoading={loading}
+              ratesError={error}
+              ratesUpdatedAt={updatedAt}
+              onRefreshRates={refresh}
             />
 
             <WorkScheduleForm
@@ -179,6 +208,17 @@ export default function CostCalculator() {
               onChange={setDevelopers}
               hourlyWorkingHours={effectiveWorkingHours}
               currency={projectInfo.primaryCurrency}
+            />
+
+            <BudgetProjection
+              developers={developers}
+              effectiveWorkingHours={effectiveWorkingHours}
+              daysPerWeek={workSchedule.daysPerWeek}
+              officeCostPercent={officeCostPercent}
+              profitMarginPercent={profitMarginPercent}
+              primaryCurrency={projectInfo.primaryCurrency}
+              secondaryCurrency={projectInfo.secondaryCurrency}
+              exchangeRate={projectInfo.exchangeRate}
             />
           </div>
 

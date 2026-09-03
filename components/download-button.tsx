@@ -3,20 +3,29 @@
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Download, FileType, File } from "lucide-react"
+import { getCurrency } from "@/lib/currency"
 
 interface Developer {
   id: string
   name: string
   monthlySalary: number
-  workType: "hours" | "days"
+  workType: "hours" | "days" | "months"
   workAmount: number
+}
+
+const hoursWorkedFor = (dev: Developer, effectiveWorkingHours: number) => {
+  if (dev.workType === "days") return dev.workAmount * effectiveWorkingHours
+  if (dev.workType === "months") return dev.workAmount * effectiveWorkingHours * 5 * 4.33
+  return dev.workAmount
 }
 
 interface ProjectInfo {
   projectName: string
   clientName: string
   invoiceDate: string
-  primaryCurrency: "USD" | "BDT"
+  primaryCurrency: string
+  secondaryCurrency: string
+  exchangeRate: number
 }
 
 interface DownloadButtonProps {
@@ -29,18 +38,7 @@ interface DownloadButtonProps {
   officeCost: number
   profitAmount: number
   totalCost: number
-  totalUSD: number
-  totalBDT: number
-}
-
-// Exchange rate constant
-const USD_TO_BDT = 121
-
-const formatCurrency = (amount: number, currency: "USD" | "BDT") => {
-  if (currency === "USD") {
-    return `$${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-  }
-  return `৳${amount.toLocaleString("en-BD", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  totalSecondary: number
 }
 
 const formatDate = (dateString: string) => {
@@ -60,7 +58,18 @@ const calculateHourlyRate = (monthlySalary: number, effectiveWorkingHours: numbe
 }
 
 export function DownloadButton(props: DownloadButtonProps) {
-  const formatPrimaryCurrency = (amount: number) => formatCurrency(amount, props.projectInfo.primaryCurrency)
+  const primaryMeta = getCurrency(props.projectInfo.primaryCurrency)
+  const secondaryMeta = getCurrency(props.projectInfo.secondaryCurrency)
+  // Use ISO codes in documents — jsPDF's core fonts don't ship glyphs for
+  // symbols like ৳/₹/€, so codes keep invoices legible everywhere.
+  const docMoney = (amount: number, code: string) => {
+    const num = (Number.isFinite(amount) ? amount : 0).toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+    return `${code} ${num}`
+  }
+  const formatPrimaryCurrency = (amount: number) => docMoney(amount, primaryMeta.code)
 
   const handleDownloadPDF = async () => {
     const { default: jsPDF } = await import("jspdf")
@@ -104,9 +113,7 @@ export function DownloadButton(props: DownloadButtonProps) {
     if (props.developers.length > 0) {
       props.developers.forEach((dev) => {
         const hourlyRate = calculateHourlyRate(dev.monthlySalary, props.effectiveWorkingHours)
-        const hoursWorked = dev.workType === "days" 
-          ? dev.workAmount * props.effectiveWorkingHours 
-          : dev.workAmount
+        const hoursWorked = hoursWorkedFor(dev, props.effectiveWorkingHours)
         const devCost = hoursWorked * hourlyRate
 
         doc.text(`${dev.name}`, 20, y)
@@ -154,11 +161,11 @@ export function DownloadButton(props: DownloadButtonProps) {
     // Dual Currency
     doc.setFontSize(11)
     doc.setFont("helvetica", "normal")
-    doc.text(`USD: ${formatCurrency(props.totalUSD, "USD")}`, 20, y)
-    doc.text(`BDT: ${formatCurrency(props.totalBDT, "BDT")}`, 110, y)
+    doc.text(`${primaryMeta.code}: ${docMoney(props.totalCost, primaryMeta.code)}`, 20, y)
+    doc.text(`${secondaryMeta.code}: ${docMoney(props.totalSecondary, secondaryMeta.code)}`, 110, y)
     y += 8
     doc.setFontSize(9)
-    doc.text(`Exchange rate: $1 = ৳${USD_TO_BDT}`, 20, y)
+    doc.text(`Exchange rate: 1 ${primaryMeta.code} = ${props.projectInfo.exchangeRate} ${secondaryMeta.code}`, 20, y)
 
     // Save
     const filename = props.projectInfo.projectName 
@@ -194,9 +201,7 @@ export function DownloadButton(props: DownloadButtonProps) {
     // Developer rows
     props.developers.forEach((dev) => {
       const hourlyRate = calculateHourlyRate(dev.monthlySalary, props.effectiveWorkingHours)
-      const hoursWorked = dev.workType === "days" 
-        ? dev.workAmount * props.effectiveWorkingHours 
-        : dev.workAmount
+      const hoursWorked = hoursWorkedFor(dev, props.effectiveWorkingHours)
       const devCost = hoursWorked * hourlyRate
 
       tableRows.push(
@@ -300,11 +305,11 @@ export function DownloadButton(props: DownloadButtonProps) {
               spacing: { before: 400 }
             }),
             new Paragraph({
-              text: `USD: ${formatCurrency(props.totalUSD, "USD")}    |    BDT: ${formatCurrency(props.totalBDT, "BDT")}`,
+              text: `${primaryMeta.code}: ${docMoney(props.totalCost, primaryMeta.code)}    |    ${secondaryMeta.code}: ${docMoney(props.totalSecondary, secondaryMeta.code)}`,
               spacing: { after: 100 }
             }),
             new Paragraph({
-              text: `Exchange rate: $1 = ৳${USD_TO_BDT}`,
+              text: `Exchange rate: 1 ${primaryMeta.code} = ${props.projectInfo.exchangeRate} ${secondaryMeta.code}`,
               spacing: { after: 200 }
             })
           ]
