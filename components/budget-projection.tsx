@@ -127,7 +127,7 @@ export function BudgetProjection({
     { label: "Hourly", icon: Clock, value: metrics.hourly, hint: "blended team rate" },
     { label: "Daily", icon: CalendarDays, value: metrics.daily, hint: `${effectiveWorkingHours.toFixed(1)}h/day` },
     { label: "Weekly", icon: CalendarRange, value: metrics.weekly, hint: `${daysPerWeek} days/week` },
-    { label: "Monthly", icon: CalendarClock, value: metrics.monthly, hint: `${metrics.workingDaysPerMonth.toFixed(1)} work days` },
+    { label: "Monthly", icon: CalendarClock, value: metrics.monthly, hint: `per month · ${metrics.workingDaysPerMonth.toFixed(1)} work days` },
     { label: "Yearly", icon: TrendingUp, value: metrics.yearly, hint: "× 12 months" },
   ]
 
@@ -143,7 +143,7 @@ export function BudgetProjection({
           <div>
             <CardTitle className="text-lg text-foreground">Budget Projection</CardTitle>
             <CardDescription className="text-muted-foreground">
-              Recurring team cost across daily, monthly &amp; yearly bases
+              Recurring team burn rate &mdash; independent of project duration
             </CardDescription>
           </div>
         </div>

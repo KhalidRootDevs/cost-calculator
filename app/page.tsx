@@ -81,7 +81,7 @@ export default function CostCalculator() {
     let totalCost = 0;
     let hours = 0;
 
-    const weeklyHours = effectiveWorkingHours * 5;
+    const weeklyHours = effectiveWorkingHours * workSchedule.daysPerWeek;
     const monthlyHours = weeklyHours * 4.33;
 
     developers.forEach((dev) => {
@@ -98,7 +98,7 @@ export default function CostCalculator() {
     });
 
     return { baseCost: totalCost, totalHours: hours };
-  }, [developers, effectiveWorkingHours]);
+  }, [developers, effectiveWorkingHours, workSchedule.daysPerWeek]);
 
   const primaryMeta = getCurrency(projectInfo.primaryCurrency);
   const HeaderCurrencyIcon = primaryMeta.icon;
@@ -209,6 +209,7 @@ export default function CostCalculator() {
               developers={developers}
               onChange={setDevelopers}
               hourlyWorkingHours={effectiveWorkingHours}
+              daysPerWeek={workSchedule.daysPerWeek}
               currency={projectInfo.primaryCurrency}
             />
 

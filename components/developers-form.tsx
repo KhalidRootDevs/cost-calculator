@@ -20,10 +20,11 @@ interface DevelopersFormProps {
   developers: Developer[]
   onChange: (developers: Developer[]) => void
   hourlyWorkingHours: number
+  daysPerWeek: number
   currency: string
 }
 
-export function DevelopersForm({ developers, onChange, hourlyWorkingHours, currency }: DevelopersFormProps) {
+export function DevelopersForm({ developers, onChange, hourlyWorkingHours, daysPerWeek, currency }: DevelopersFormProps) {
   const currencySymbol = symbolFor(currency)
   const CurrencyIcon = currencyIcon(currency)
   const addDeveloper = () => {
@@ -57,8 +58,8 @@ export function DevelopersForm({ developers, onChange, hourlyWorkingHours, curre
     onChange(developers.filter((d) => d.id !== id))
   }
 
-  // Assuming 5 working days/week, 4.33 weeks/month average
-  const monthlyHours = hourlyWorkingHours * 5 * 4.33
+  // 4.33 weeks/month average, using the configured working days/week
+  const monthlyHours = hourlyWorkingHours * daysPerWeek * 4.33
 
   const calculateHourlyRate = (monthlySalary: number) => {
     return monthlyHours > 0 ? monthlySalary / monthlyHours : 0
