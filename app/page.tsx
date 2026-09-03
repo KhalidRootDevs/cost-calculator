@@ -15,6 +15,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Clock, Users, Calculator } from "lucide-react";
 import { useExchangeRate } from "@/hooks/use-exchange-rate";
 import { getCurrency, convertWithRates } from "@/lib/currency";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 interface WorkSchedule {
   daysPerWeek: number;
@@ -131,6 +132,7 @@ export default function CostCalculator() {
             >
               v1.0
             </Badge>
+            <ThemeToggle />
           </div>
         </div>
       </header>
