@@ -1,0 +1,14 @@
+{
+  "name": "Cost Calculator — Software Project Budgeting",
+  "short_name": "Cost Calc",
+  "description": "Multi-currency software project cost estimator with live exchange rates and daily/monthly/yearly budget projections.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0e17",
+  "theme_color": "#2f6fed",
+  "icons": [
+    { "src": "/icon-light-32x32.png", "sizes": "32x32", "type": "image/png" },
+    { "src": "/apple-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
