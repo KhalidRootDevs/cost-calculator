@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   ProjectInfoForm,
   type ProjectInfo,
@@ -12,7 +12,8 @@ import { CostSummary } from "@/components/cost-summary";
 import { BudgetProjection } from "@/components/budget-projection";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Clock, Users, Calculator } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Clock, Users, Calculator, RotateCcw } from "lucide-react";
 import { useExchangeRate } from "@/hooks/use-exchange-rate";
 import { getCurrency, convertWithRates } from "@/lib/currency";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -24,17 +25,32 @@ interface WorkSchedule {
   workingDays: string[];
 }
 
+const STORAGE_KEY = "cost-cal-state-v1";
+
+const defaultProjectInfo = (): ProjectInfo => ({
+  projectName: "",
+  clientName: "",
+  invoiceDate: new Date().toISOString().split("T")[0],
+  primaryCurrency: "USD",
+  secondaryCurrency: "BDT",
+  exchangeRate: 121,
+});
+
+const defaultWorkSchedule = (): WorkSchedule => ({
+  daysPerWeek: 5,
+  startTime: "10:00",
+  endTime: "19:00",
+  workingDays: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"],
+});
+
+const defaultBreaks = (): Break[] => [
+  { id: "1", name: "Lunch Break", duration: 60 },
+];
+
 export default function CostCalculator() {
   const { rates, updatedAt, loading, error, refresh } = useExchangeRate();
 
-  const [projectInfo, setProjectInfo] = useState<ProjectInfo>({
-    projectName: "",
-    clientName: "",
-    invoiceDate: new Date().toISOString().split("T")[0],
-    primaryCurrency: "USD",
-    secondaryCurrency: "BDT",
-    exchangeRate: 121,
-  });
+  const [projectInfo, setProjectInfo] = useState<ProjectInfo>(defaultProjectInfo);
 
   // Auto-refresh the pair rate when the currency selection changes;
   // manual edits to the rate field alone are preserved.
@@ -49,21 +65,72 @@ export default function CostCalculator() {
     setProjectInfo(next);
   };
 
-  const [workSchedule, setWorkSchedule] = useState<WorkSchedule>({
-    daysPerWeek: 5,
-    startTime: "10:00",
-    endTime: "19:00",
-    workingDays: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"],
-  });
+  const [workSchedule, setWorkSchedule] = useState<WorkSchedule>(defaultWorkSchedule);
 
-  const [breaks, setBreaks] = useState<Break[]>([
-    { id: "1", name: "Lunch Break", duration: 60 },
-  ]);
+  const [breaks, setBreaks] = useState<Break[]>(defaultBreaks);
 
   const [developers, setDevelopers] = useState<Developer[]>([]);
 
   const [officeCostPercent, setOfficeCostPercent] = useState(15);
   const [profitMarginPercent, setProfitMarginPercent] = useState(20);
+
+  // Tracks whether the initial localStorage hydration has run, so we
+  // don't persist the default state over saved data before it loads.
+  const [hydrated, setHydrated] = useState(false);
+
+  // Hydrate from localStorage on mount (client-only, avoids SSR mismatch).
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        if (saved.projectInfo) setProjectInfo(saved.projectInfo);
+        if (saved.workSchedule) setWorkSchedule(saved.workSchedule);
+        if (saved.breaks) setBreaks(saved.breaks);
+        if (saved.developers) setDevelopers(saved.developers);
+        if (typeof saved.officeCostPercent === "number") setOfficeCostPercent(saved.officeCostPercent);
+        if (typeof saved.profitMarginPercent === "number") setProfitMarginPercent(saved.profitMarginPercent);
+      }
+    } catch {
+      // Corrupt/blocked storage — fall back to defaults.
+    }
+    setHydrated(true);
+  }, []);
+
+  // Persist on any state change, once hydrated.
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          projectInfo,
+          workSchedule,
+          breaks,
+          developers,
+          officeCostPercent,
+          profitMarginPercent,
+        })
+      );
+    } catch {
+      // Storage full/blocked — ignore.
+    }
+  }, [hydrated, projectInfo, workSchedule, breaks, developers, officeCostPercent, profitMarginPercent]);
+
+  const resetAll = () => {
+    if (!confirm("Clear all saved data and reset to defaults?")) return;
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+    setProjectInfo(defaultProjectInfo());
+    setWorkSchedule(defaultWorkSchedule());
+    setBreaks(defaultBreaks());
+    setDevelopers([]);
+    setOfficeCostPercent(15);
+    setProfitMarginPercent(20);
+  };
 
   // Calculate effective working hours per day
   const effectiveWorkingHours = useMemo(() => {
@@ -132,6 +199,15 @@ export default function CostCalculator() {
             >
               v1.0
             </Badge>
+            <Button
+              onClick={resetAll}
+              variant="outline"
+              size="sm"
+              className="gap-2 border-border bg-secondary text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Reset</span>
+            </Button>
             <ThemeToggle />
           </div>
         </div>
